@@ -111,7 +111,7 @@
             let resultHTML = '';
 
             for (let i = 0; i < lines.length; i += 20) {
-                const chunk = lines.slice(i, i + 20).join(' && \n ');
+                const chunk = lines.slice(i, i + 20).join(' && \n');
                 resultHTML += `<pre id="output-${i / 20}">${chunk}</pre>`;
                 if (i + 20 < lines.length) {
                     const copyButton = `<button onclick="copyToClipboard('output-${i / 20}', this)">Copy Lines ${i + 1}-${i + 20}</button>`;
