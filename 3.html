@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuclei Scanner</title>
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/3/34/Icon_hacker.png">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 3px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #0073e6;
+        }
+        textarea, input {
+            width: 100%;
+            margin-bottom: 3px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            height: 150px;
+        }
+        pre {
+            background-color: #f7f7f7;
+            padding: 3px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-align: left;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        button {
+            padding: 10px 3px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #0073e6;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        button:hover {
+            background-color: #005bb5;
+        }
+        button.clicked {
+            background-color: black;
+            color: white;
+        }
+        footer {
+            margin-top: 3px;
+            font-size: 14px;
+            color: #888;
+        }
+        .command-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nuclei SCANNER</h1>
+        <input type="text" id="templateInput" placeholder="Enter Nuclei template path:" />
+        <input type="text" id="filepathInput" placeholder="Enter Subdomain path:" />
+        <textarea id="wordsInput" placeholder="Enter Subdomains.txt, one per line:"></textarea>
+        <button onclick="generateCommands()">Generate Commands</button>
+        <div id="output"></div>
+        <div id="savedCommands"></div>
+        <footer>Powered by Professor Software Solutions</footer>
+    </div>
+
+    <script>
+        // Function to generate commands
+        function generateCommands() {
+            const template = document.getElementById('templateInput').value.trim();
+            const filepath = document.getElementById('filepathInput').value.trim();
+            const words = document.getElementById('wordsInput').value.split('\n').filter(word => word.trim());
+            const output = words.map(word => `nuclei -l ${filepath}/${word.trim()} ${template} -o ${word.trim()}.output`).join(' && ');
+            displayCommands(output);
+            saveCommands(output);
+        }
+
+        // Function to display commands
+        function displayCommands(commands) {
+            const lines = commands.split(' && ');
+            let resultHTML = '';
+
+            for (let i = 0; i < lines.length; i += 3) {
+                const chunk = lines.slice(i, i + 3).join(' && \n');
+                resultHTML += `<pre id="output-${i / 3}">${chunk}</pre>`;
+                if (i + 3 < lines.length) {
+                    const copyButton = `<button onclick="copyToClipboard('output-${i / 3}', this)">Copy Lines ${i + 1}-${i + 3}</button>`;
+                    resultHTML += `<div>${copyButton}</div>`;
+                } else {
+                    const copyButton = `<button onclick="copyToClipboard('output-${i / 3}', this)">Copy Lines ${i + 1}-${lines.length}</button>`;
+                    resultHTML += `<div>${copyButton}</div>`;
+                }
+            }
+
+            document.getElementById('output').innerHTML = resultHTML;
+        }
+
+        // Function to copy text to clipboard
+        function copyToClipboard(elementId, button) {
+            let text = document.getElementById(elementId).textContent;
+            text = text.replace(/ &&$/, ''); // Remove trailing "&&"
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    console.log('Copied to clipboard');
+                    button.classList.add('clicked');
+                })
+                .catch(err => console.error('Failed to copy:', err));
+        }
+
+        // Function to save commands to localStorage
+        function saveCommands(commands) {
+            const timestamp = new Date().toLocaleString();
+            const savedCommands = JSON.parse(localStorage.getItem('savedCommands')) || [];
+            savedCommands.push({ timestamp, commands });
+
+            if (savedCommands.length > 5) {
+                savedCommands.shift(); // Remove the oldest command set if there are more than 5
+            }
+
+            localStorage.setItem('savedCommands', JSON.stringify(savedCommands));
+            loadSavedCommands(); // Reload the list of saved commands
+        }
+
+        // Function to delete a saved command by index
+        function deleteCommand(index) {
+            let savedCommands = JSON.parse(localStorage.getItem('savedCommands')) || [];
+            savedCommands.splice(index, 1);
+            localStorage.setItem('savedCommands', JSON.stringify(savedCommands));
+            loadSavedCommands(); // Reload the list of saved commands
+        }
+
+        // Function to load commands from localStorage and display the list of saved commands
+        function loadSavedCommands() {
+            const savedCommands = JSON.parse(localStorage.getItem('savedCommands')) || [];
+            const savedCommandsContainer = document.getElementById('savedCommands');
+            savedCommandsContainer.innerHTML = '';
+
+            savedCommands.forEach((item, index) => {
+                const commandItem = document.createElement('div');
+                commandItem.className = 'command-item';
+
+                const commandLink = document.createElement('a');
+                commandLink.href = '#';
+                commandLink.textContent = `Commands generated on: ${item.timestamp}`;
+                commandLink.onclick = () => displayCommands(item.commands);
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteCommand(index);
+
+                commandItem.appendChild(commandLink);
+                commandItem.appendChild(deleteButton);
+                savedCommandsContainer.appendChild(commandItem);
+            });
+        }
+
+        // Load saved commands when the page loads
+        window.onload = loadSavedCommands;
+    </script>
+</body>
+</html>
